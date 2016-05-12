@@ -4,7 +4,7 @@
 /// Under the MIT license.
 ///
 
-#include "EntityFu.h"
+#include "EntityFu.hpp"
 #include <iostream>
 #include <unistd.h>
 using namespace std;
@@ -13,16 +13,17 @@ using namespace std;
 struct HealthComponent : Entity::Component
 {
 	int hp, maxHP;
-	
+
 	HealthComponent(int _hp, int _maxHP)
 	{
 		hp = _hp;
 		maxHP = _maxHP;
 	}
-	
+
 	HealthComponent() : HealthComponent(0, 0) {}
 
-	virtual bool empty() const {return maxHP == 0;}
+	virtual bool empty() const { return maxHP == 0; }
+	virtual bool is_enabled() const { return maxHP == 0; }
 
 	static Cid cid;
 };
@@ -36,19 +37,19 @@ Cid Entity::Component::numCids = _id; // also critical to assign `numClassIds`
 struct System::Ent
 {
 	Eid id;
-	HealthComponent& health;
+	HealthComponent &health;
 	/// Add more components your systems will use frequently
 
-	Ent(Eid _id) :
-		health(Entity::get<HealthComponent>(_id)),
-		id(_id)
-	{}
+	Ent(Eid _id) : health(Entity::get<HealthComponent>(_id)),
+				   id(_id)
+	{
+	}
 };
 
 /// An example system.
 struct HealthSystem : System
 {
-	static void tick(double fixedDelta)
+	virtual void tick(double fixedDelta)
 	{
 		// create a copy of the vector<Eid> for all health components so we
 		// don't cause an assertion failure: "vector iterator not incrementable"
@@ -60,11 +61,11 @@ struct HealthSystem : System
 		for (auto eid : all)
 		{
 			Ent e(eid);
-			
+
 			// this is overly pragmatic, but you get the drift of how to check if a component is valid
 			if (e.health.empty())
 				continue;
-			
+
 			// decrement
 			e.health.hp--;
 			if (e.health.hp < 0)
@@ -78,22 +79,27 @@ struct HealthSystem : System
 	}
 };
 
-int main(int argc, const char * argv[])
+int main(int argc, const char *argv[])
 {
+	std::vector<System *> m_systems;
+	m_systems.push_back(new HealthSystem());
+
 	// create some entities
 	Entity::create(new HealthComponent(100, 100));
 	Entity::create(new HealthComponent(7, 7));
-	
-	// run the system
+
+	// Simulate Game loop
 	while (Entity::count())
 	{
-		HealthSystem::tick(0.1);
-		usleep(1000 * 100);
+		// Simulate update() loop
+		for (auto &system : m_systems)
+		{
+			system->tick(0.1);
+			usleep(1000 * 100);
+		}
 	}
-	
+
 	Entity::dealloc();
 	cout << "Goodbye, World!\n";
-    return 0;
+	return 0;
 }
-
-

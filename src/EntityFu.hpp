@@ -5,6 +5,7 @@
 ///
 
 #pragma once
+#include <string>
 #include <vector>
 
 /// An `Eid` is an entity ID.
@@ -18,7 +19,10 @@ namespace Entity
 	struct Component;
 
 	/// The maximum number of entities. Increase this if you need more.
-	enum {kMaxEntities = 8192};
+	enum
+	{
+		kMaxEntities = 8192
+	};
 
 	/// Allocate the memory for entities and components. Can call this manually or let it allocate automatically.
 	void alloc();
@@ -43,21 +47,23 @@ namespace Entity
 
 	/// Component-related methods that require a `Cid`.
 	/// The templated versions of these methods do not require a `Cid`, yet incur an extra function call of overhead.
-	void addComponent(Cid cid, Eid eid, Component* c);
+	void addComponent(Cid cid, Eid eid, Component *c);
 	void removeComponent(Cid cid, Eid eid);
-	Component* getComponent(Cid cid, Eid eid);
-	const std::vector<Eid>& getAll(Cid cid);
+	Component *getComponent(Cid cid, Eid eid);
+	const std::vector<Eid> &getAll(Cid cid);
 	unsigned count(Cid cid);
 
 	/// Add the given component to the given entity.
 	/// Note that components must be allocated with new.
-	template<class ComponentClass> inline static void addComponent(Eid eid, ComponentClass* c)
+	template <class ComponentClass>
+	inline static void addComponent(Eid eid, ComponentClass *c)
 	{
 		return Entity::addComponent(ComponentClass::cid, eid, c);
 	}
 
 	/// Remove a component from an entity.
-	template<class ComponentClass> inline static void removeComponent(Eid eid)
+	template <class ComponentClass>
+	inline static void removeComponent(Eid eid)
 	{
 		return Entity::removeComponent(ComponentClass::cid, eid);
 	}
@@ -66,9 +72,10 @@ namespace Entity
 	/// Warning, if the Eid does not exist a blank static component will be returned,
 	/// so be sure to check if it is empty before writing any data to it or else
 	/// the blank static component will no longer be empty and the Earth will implode.
-	template<class ComponentClass> inline static ComponentClass& get(Eid eid)
+	template <class ComponentClass>
+	inline static ComponentClass &get(Eid eid)
 	{
-		auto p = static_cast<ComponentClass*>(Entity::getComponent(ComponentClass::cid, eid));
+		auto p = static_cast<ComponentClass *>(Entity::getComponent(ComponentClass::cid, eid));
 		if (p != nullptr)
 			return *p;
 		static ComponentClass s;
@@ -76,33 +83,38 @@ namespace Entity
 	}
 
 	/// Get a pointer to a component.
-	template<class ComponentClass> inline static ComponentClass* getPointer(Eid eid)
+	template <class ComponentClass>
+	inline static ComponentClass *getPointer(Eid eid)
 	{
-		return static_cast<ComponentClass*>(Entity::getComponent(ComponentClass::cid, eid));
+		return static_cast<ComponentClass *>(Entity::getComponent(ComponentClass::cid, eid));
 	}
 
 	/// Get a vector of all Eids for the given component class.
-	template<class ComponentClass> inline static const std::vector<Eid>& getAll()
+	template <class ComponentClass>
+	inline static const std::vector<Eid> &getAll()
 	{
 		return Entity::getAll(ComponentClass::cid);
 	}
 
 	/// Count all the entities with the given component class.
-	template<class ComponentClass> inline static unsigned count()
+	template <class ComponentClass>
+	inline static unsigned count()
 	{
 		return Entity::count(ComponentClass::cid);
 	}
 
 	/// A utility method for `Entity::create(...)`.
 	/// The final call to `addComponents`.
-	template <class C> static void addComponents(Eid eid, C* c)
+	template <class C>
+	static void addComponents(Eid eid, C *c)
 	{
 		Entity::addComponent(C::cid, eid, c);
 	}
 
 	/// A utility method for `Entity::create(...)`.
 	/// The variadic template version of `addComponents`.
-	template <class C, typename ...Args> static void addComponents(Eid eid, C* c, Args... args)
+	template <class C, typename... Args>
+	static void addComponents(Eid eid, C *c, Args... args)
 	{
 		Entity::addComponent(C::cid, eid, c);
 		Entity::addComponents(eid, args...);
@@ -110,13 +122,13 @@ namespace Entity
 
 	/// Create an entity with some components.
 	/// Convenience method which calls `Entity::create()` and `Entity::addComponent`.
-	template <typename ...Args> static Eid create(Args... args)
+	template <typename... Args>
+	static Eid create(Args... args)
 	{
 		auto eid = Entity::create();
 		Entity::addComponents(eid, args...);
 		return eid;
 	}
-
 };
 
 ///
@@ -132,8 +144,10 @@ struct Entity::Component
 	virtual ~Component() {}
 	virtual bool empty() const = 0;
 	virtual bool full() const;
+	virtual bool is_enabled() const = 0;
 	static Cid numCids;
-	// static Cid cid;
+
+	bool enabled = false;
 };
 
 ///
@@ -141,8 +155,9 @@ struct Entity::Component
 /// Example: Entity__get(eid, health, HealthComponent, continue);
 ///
 #define Entity__get(componentClass, eid, varName, orElseCode) \
-	auto& (varName) = Entity::get<componentClass>((eid)); \
-	if ((varName).empty()) orElseCode
+	auto &(varName) = Entity::get<componentClass>((eid));     \
+	if ((varName).empty())                                    \
+	orElseCode
 
 ///
 /// System
@@ -154,11 +169,10 @@ struct Entity::Component
 ///
 class System
 {
-	public:
-		struct Ent;
-	
-		static void tick(double fixedDelta) {}
-		static void animate(double delta, double tickPercent) {}
+public:
+	struct Ent;
+	std::string name;
+
+	virtual void tick(double fixedDelta) = 0;
+	//virtual void animate(double delta, double tickPercent) = 0;
 };
-
-

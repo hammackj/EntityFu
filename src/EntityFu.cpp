@@ -4,7 +4,7 @@
 /// Under the MIT license.
 ///
 
-#include "EntityFu.h"
+#include "EntityFu.hpp"
 #include <algorithm>
 using namespace std;
 
@@ -14,19 +14,33 @@ using namespace std;
 /// Log macro.
 #ifndef Log
 #ifndef NDEBUG
-	#include <stdio.h>
-	#define Log(...) {printf(__VA_ARGS__); printf("\n");}
+#include <stdio.h>
+#define Log(...)             \
+	{                        \
+		printf(__VA_ARGS__); \
+		printf("\n");        \
+	}
 #else
-	#define Log(...) do {} while (0)
+#define Log(...) \
+	do           \
+	{            \
+	} while (0)
 #endif
 #endif
 
 /// Assert macro.
 #ifndef Assert
 #ifndef NDEBUG
-	#define Assert(condition, format, ...) {if(!condition) throw format;}
+#define Assert(condition, format, ...) \
+	{                                  \
+		if (!condition)                \
+			throw format;              \
+	}
 #else
-	#define Assert(...) do {} while (0)
+#define Assert(...) \
+	do              \
+	{               \
+	} while (0)
 #endif
 #endif
 
@@ -35,16 +49,18 @@ using namespace std;
 static int verbosity = 0;
 
 /// Static pointers to the ECS data.
-static bool* entities = nullptr;
-static Entity::Component*** components = nullptr;
-static vector<Eid>* componentEids = nullptr;
+static bool *entities = nullptr;
+static Entity::Component ***components = nullptr;
+static vector<Eid> *componentEids = nullptr;
 
 static void log(Cid cid)
 {
 	auto n = Entity::count(cid);
-	auto& eids = Entity::getAll(cid);
+	auto &eids = Entity::getAll(cid);
 	if (eids.size() > 0)
-		{Log("Cid %u has %d entities ranging from %u to %u", cid, n, eids.front(), eids.back());}
+	{
+		Log("Cid %u has %d entities ranging from %u to %u", cid, n, eids.front(), eids.back());
+	}
 }
 
 void Entity::alloc()
@@ -52,7 +68,9 @@ void Entity::alloc()
 	if (components != nullptr)
 		return;
 	if (verbosity > 0)
-		{Log("Allocing entities");}
+	{
+		Log("Allocing entities");
+	}
 
 	// allocate entities
 	entities = new bool[kMaxEntities];
@@ -61,13 +79,13 @@ void Entity::alloc()
 
 	// allocate components
 	auto max = Component::numCids;
-	components = new Component**[max];
+	components = new Component **[max];
 	componentEids = new vector<Eid>[Component::numCids];
 	for (Cid cid = 0; cid < max; cid++)
 	{
 		// allocate component array
-		components[cid] = new Component*[kMaxEntities];
-		
+		components[cid] = new Component *[kMaxEntities];
+
 		// zero component pointers
 		for (Eid eid = 0; eid < kMaxEntities; eid++)
 			components[cid][eid] = nullptr;
@@ -77,23 +95,25 @@ void Entity::alloc()
 void Entity::dealloc()
 {
 	if (verbosity > 0)
-		{Log("Deallocing entities");}
-	
+	{
+		Log("Deallocing entities");
+	}
+
 	if (components != nullptr)
 	{
 		Entity::destroyAll();
 		for (Cid cid = 0; cid < Component::numCids; cid++)
 			if (components[cid] != nullptr)
-				delete [] components[cid];
-		delete [] components;
+				delete[] components[cid];
+		delete[] components;
 	}
 
 	if (componentEids != nullptr)
-		delete [] componentEids;
+		delete[] componentEids;
 
 	if (entities != nullptr)
-		delete [] entities;
-	
+		delete[] entities;
+
 	entities = nullptr;
 	components = nullptr;
 	componentEids = nullptr;
@@ -103,7 +123,7 @@ Eid Entity::create()
 {
 	// auto allocate
 	Entity::alloc();
-	
+
 	Eid eid = 1;
 	for (; eid < kMaxEntities && entities[eid]; ++eid)
 	{
@@ -118,9 +138,11 @@ Eid Entity::create()
 	{
 		entities[eid] = true;
 		if (verbosity > 0)
-			{Log("Entity %u created", eid);}
+		{
+			Log("Entity %u created", eid);
+		}
 	}
-	
+
 	return eid;
 }
 
@@ -129,7 +151,9 @@ void Entity::destroyNow(Eid eid)
 	if (eid == 0)
 		return;
 	if (verbosity > 0)
-		{Log("Entity %u being destroyed", eid);}
+	{
+		Log("Entity %u being destroyed", eid);
+	}
 
 	for (Cid cid = 0; cid < Component::numCids; cid++)
 		Entity::removeComponent(cid, eid);
@@ -143,7 +167,7 @@ void Entity::destroyAll()
 			Entity::destroyNow(eid);
 }
 
-void Entity::addComponent(Cid cid, Eid eid, Component* c)
+void Entity::addComponent(Cid cid, Eid eid, Component *c)
 {
 	if (c == nullptr)
 		return;
@@ -158,15 +182,15 @@ void Entity::addComponent(Cid cid, Eid eid, Component* c)
 		log(cid);
 		Log("Adding component cid %u eid %u (%x)", cid, eid, (int)(long)c);
 	}
-	
+
 	// if component already added, delete old one
 	if (components[cid][eid] != nullptr)
 		Entity::removeComponent(cid, eid);
-	
+
 	// pointers to components are stored in the map
 	// (components must be allocated with new, not stack objects)
 	components[cid][eid] = c;
-	
+
 	// store component eids
 	componentEids[cid].push_back(eid);
 
@@ -196,21 +220,21 @@ void Entity::removeComponent(Cid cid, Eid eid)
 
 	// pointers to components are deleted
 	delete ptr;
-	
+
 	// erase the component pointer
 	components[cid][eid] = nullptr;
 
 	// update component eids
-	auto& eids = componentEids[cid];
+	auto &eids = componentEids[cid];
 	auto it = find(eids.begin(), eids.end(), eid);
 	if (it != eids.end())
 		it = eids.erase(it);
-	
+
 	if (verbosity > 1)
 		log(cid);
 }
 
-Entity::Component* Entity::getComponent(Cid cid, Eid eid)
+Entity::Component *Entity::getComponent(Cid cid, Eid eid)
 {
 #if (kTrustPointers == 0)
 	if (eid < kMaxEntities && cid < Component::numCids)
@@ -224,7 +248,7 @@ Entity::Component* Entity::getComponent(Cid cid, Eid eid)
 #endif
 }
 
-const vector<Eid>& Entity::getAll(Cid cid)
+const vector<Eid> &Entity::getAll(Cid cid)
 {
 	if (cid < Component::numCids)
 		return componentEids[cid];
@@ -262,5 +286,3 @@ bool Entity::Component::full() const
 {
 	return !this->empty();
 }
-
-
