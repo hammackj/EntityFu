@@ -142,7 +142,7 @@ namespace Entity
 struct Entity::Component
 {
 	virtual ~Component() {}
-	virtual bool empty() const = 0;
+	virtual bool empty() const;
 	virtual bool full() const;
 	virtual bool is_enabled() const = 0;
 	static Cid numCids;
@@ -173,6 +173,6 @@ public:
 	struct Ent;
 	std::string name;
 
-	virtual void tick(double fixedDelta) = 0;
-	//virtual void animate(double delta, double tickPercent) = 0;
+	virtual void update(double delta) = 0;
+	virtual void render(double delta) = 0;
 };

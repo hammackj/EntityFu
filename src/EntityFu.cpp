@@ -286,3 +286,8 @@ bool Entity::Component::full() const
 {
 	return !this->empty();
 }
+
+bool Entity::Component::empty() const
+{
+	return !this->empty();
+}
